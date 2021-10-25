@@ -31,21 +31,17 @@ LiquidCrystal_I2C LCD(0x27, 16, 2);
 SimpleTimer TIMER;
 
 _LcdState LcdState, PreLcdState;
-int TimerId, cnt;
-
-void timer_Start() {
-  if (cnt++ == 3) LcdState == LcdStateInit;
-}
+int TempId, UltraId, CdsId;
 
 void press_SW1() {
-  cnt = 0;
-
-  TIMER.enable(TimerId);
+  int cnt = 0;
   while (digitalRead(SW1_PIN) == LOW) {
-    if (LcdState == LcdStateInit) break;
+    delayMicroseconds(3000);
+    if (++cnt >= 1000) {
+      LcdState = LcdStateInit;
+      break;
+    }
   }
-  TIMER.disable(TimerId);
-
   switch (LcdState) {
     case LcdStateInit:
       break;
@@ -107,7 +103,9 @@ void setup() {
   LcdState = LcdStateInit;
 
   // 타이머 초기설정
-  TimerId = TIMER.setInterval(1000, timer_Start); // 1초에 한번씩 timer_Start 함수 실행
+  UltraId = TIMER.setInterval(100, sensing_Ultra); // 초음파(ultrasonic wave)타이머
+  TempId = TIMER.setInterval(500, sensing_Temp);   // 온도(Temperature) 타이머
+  CdsId = TIMER.setInterval(500, sensing_Cds);     // 조도(illuminance) 타이머
 }
 
 void lcd_Print(char *s1, char *s2) {
@@ -133,109 +131,67 @@ void lcd_Blink(int num) {
 }
 
 void sensing_Pulse() {
-  int hour = 11;
-  int minute = 59;
-  int sec = 50;
-  int msec = 0;
 
-  while (LcdState == LcdStateMode1) {
-    msec = msec + pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW);
-    if (msec >= 100) {
-      msec = 0;
-      sec++;
-      if (sec >= 60) {
-        sec = 0;
-        minute++;
-        if (minute >= 60) {
-          minute = 0;
-          hour++;
-          LCD.setCursor(1, 1);
-          if (hour < 12) {
-            LCD.print("PM");
-          }
-          else {
-            hour %= 24;
-            LCD.print("AM");
-          }
-          LCD.setCursor(4, 1);
-          LCD.print(hour);
-        }
-        LCD.setCursor(7, 1);
-        LCD.print(minute);
-      }
-      LCD.setCursor(10, 1);
-      LCD.print(sec);
-      LCD.setCursor(13, 1);
-    }
-    LCD.print(msec);
-  }
+}
+
+
+void disable_Timer() {
+  TIMER.disable(TempId);
+  TIMER.disable(CdsId);
+  TIMER.disable(UltraId);
+  TIMER.disable(PulseId);
 }
 
 void sensing_Temp() {
-  float PreTemp, temp;
+  float temp = analogRead(TEMP_PIN) * 0.48828125;
+  // LM35 온도 공식 (100 * 5 / 1024)
 
-  while (LcdState == LcdStateMode2_Temp) {
-    temp = analogRead(TEMP_PIN) * 0.48828125;
-    // LM35 온도 공식 (100 * 5 / 1024)
+  LCD.setCursor(8, 1);
+  LCD.print(temp);
 
-    if (PreTemp == temp) continue;
+}
 
-    LCD.setCursor(8, 1);
-    LCD.print(temp);
-    PreTemp = temp;
+void sensing_Cds() {
+  float cds = analogRead(CDS_PIN) * 0.0048828125;
+  // 센서 전압 : 기준 전압(=5v) = 디지털 값(=analogRead(pin_number)) : 분해능(=1024)
+
+  LCD.setCursor(7, 1);
+  if (cds >= 2.5) {
+    LCD.print(" On");
+  }
+  else {
+    LCD.print("Off");
   }
 }
 
-void sensing_Cds(float & PreCds) {
-  float PreCds, cds;
+void sensing_Ultra() {
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
 
-  while (LcdState == LcdStateMode2_Cds) {
-    cds = analogRead(CDS_PIN) * 0.0048828125;
-    // 센서 전압 : 기준 전압(=5v) = 디지털 값(=analogRead(pin_number)) : 분해능(=1024)
+  int distance = pulseIn(ECHO_PIN, HIGH) / 58;
 
-    if (cds == PreCds) continue;
+  if (distance > 1000) return;
+  Serial.println(distance);
 
-    LCD.setCursor(7, 1);
-    if (cds >= 2.5) {
-      LCD.print(" On");
-    }
-    else {
-      LCD.print("Off");
-    }
+  LCD.setCursor(9, 1);
+  LCD.print("       ");
+  LCD.setCursor(9, 1);
+  LCD.print(distance);
+  LCD.print("cm");
 
-    PreCds = cds;
-  }
+  /*
+     Equation 1. d = v * t
+     Equation 2. Distance = (Speed/170.15m) * (Meters/100cm) * (1e6us/170.15m) * (58.772us/cm)
+     Equation 3. Distance = time/58 = (us)/(us/cm)=cm
+  */
 }
 
-void sensing_Ultra(int &PreDistance) {
-  int PreDistance, distance;
-
-  while (distance == PreDistance) {
-    digitalWrite(TRIG_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIG_PIN, LOW);
-
-    int distance = pulseIn(ECHO_PIN, HIGH) / 58;
-    // 거리 = 속력 * 시간
-
-    if (distance > 1000 || PreDistance == distance) continue;
-
-    int tens = distance / 5;  // 몫
-    int units = distance % 5; // 나머지
-
-    LCD.setCursor(9, 1);
-    LCD.print("       ");
-    LCD.setCursor(9, 1);
-    LCD.print(distance);
-    LCD.print("cm");
-
-    PreDistance = distance;
-  }
-}
 
 void loop() {
   if (LcdState != PreLcdState) {
     PreLcdState = LcdState;
+    disable_Timer();
     switch (LcdState) {
       case LcdStateInit:
         lcd_Print("Digital Pulse", "Number:     A001");
@@ -255,15 +211,15 @@ void loop() {
         break;
       case LcdStateMode2_Cds:
         lcd_Print("2.Sensor Mode", " [CDS] xxx");
-        sensing_Cds();
+        TIMER.enable(CdsId);
         break;
       case LcdStateMode2_Ultra:
         lcd_Print("2.Sensor Mode", " [Ultra] 013cm");
-        sensing_Ultra();
+        TIMER.enable(UltraId);
         break;
       case LcdStateMode2_Temp:
         lcd_Print("2.Sensor Mode", " [Temp] xx.xxC");
-        sensing_Temp();
+        TIMER.enable(TempId);
         break;
       default:
         break;
