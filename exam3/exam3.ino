@@ -29,7 +29,7 @@ LiquidCrystal_I2C LCD(0x27, 16, 2);
 SimpleTimer TIMER;
 
 _LcdState LcdState, PreLcdState;
-int TimerId, CdsId, UltraId, cnt;
+int CdsId, UltraId, cnt;
 int Cds;
 int Hour = 11;
 int Minute = 59;
@@ -37,19 +37,16 @@ int Sec = 50;
 float Temp;
 
 
-
-void timer_Start() {
-  if (cnt++ == 3) LcdState == LcdStateInit;
-}
-
 void press_SW1() {
-  cnt = 0;
+  int cnt = 0;
 
-  TIMER.enable(TimerId);
   while (digitalRead(SW1_PIN) == LOW) {
-    if (LcdState == LcdStateInit) break;
+    delayMicroseconds(15000);
+    if (++cnt >= 200) {
+      LcdState = LcdStateInit;
+      break;
+    }
   }
-  TIMER.disable(TimerId);
 
   switch (LcdState) {
     case LcdStateInit:
@@ -118,7 +115,6 @@ void setup() {
   LcdState = LcdStateInit;
 
   // 타이머 초기설정
-  TimerId = TIMER.setInterval(1000, timer_Start);    // 1초에 한번씩 timer_Start 함수 실행
   TemprId = TIMER.setInterval(300, sensing_Temp);    // 0.3초에 한번씩 sensing_Temp 함수 실행
   CdsId = TIMER.setInterval(200, sensing_Cds);       // 0.2초에 한번씩 sensing_Cds 함수 실행
   UltraId = TIMER.setInterval(100, sensing_Ultra);   // 0.1초에 한번씩 sensing_Ultra 함수 실행

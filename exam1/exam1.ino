@@ -1,4 +1,3 @@
-#include <SimpleTimer.h>
 #include <LiquidCrystal_I2C.h>
 
 #define SW1_PIN 3
@@ -18,7 +17,7 @@
 uint8_t zero[8]  = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint8_t one[8]  = {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10};
 uint8_t two[8]  = {0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18};
-uint8_t three[8] = {0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c};W
+uint8_t three[8] = {0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c};
 uint8_t four[8] = {0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e};
 uint8_t five[8]  = {0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
 
@@ -33,25 +32,20 @@ typedef enum {
 
 // 전역 변수
 LiquidCrystal_I2C LCD(0x27, 16, 2);
-SimpleTimer TIMER;
 
 _LcdState LcdState, PreLcdState;
-int TimerId, cnt;
 
-
-
-void timer_Start() {
-  if (cnt++ == 3) LcdState == LcdStateInit;
-}
 
 void press_SW1() {
-  cnt = 0;
+  int cnt = 0;
 
-  TIMER.enable(TimerId);
   while (digitalRead(SW1_PIN) == LOW) {
-    if (LcdState == LcdStateInit) break;
+    delayMicroseconds(15000);
+    if (++cnt >= 200) {
+      LcdState = LcdStateInit;
+      break;
+    }
   }
-  TIMER.disable(TimerId);
 
   switch (LcdState) {
     case LcdStateInit:
@@ -108,9 +102,6 @@ void setup() {
 
   // LcdState 초기설정
   LcdState = LcdStateInit;
-
-  // 타이머 초기설정
-  TimerId = TIMER.setInterval(1000, timer_Start); // 1초에 한번씩 timer_Start 함수 실행
 }
 
 void lcd_Print(char *s1, char *s2) {
@@ -159,7 +150,7 @@ void sensing_Temp_Cds_Ultra() {
   while (LcdState == LcdStateMode2 ) {
     sensing_Temp(PreTemp);
     sensing_Cds(PreCds);
-    sensing_Ultra(PreDistance)
+    sensing_Ultra(PreDistance);
   }
 }
 
@@ -181,7 +172,7 @@ void sensing_Cds(float &PreCds) {
   if (cds == PreCds) return;
 
   LCD.setCursor(13, 0);
-  if (cds > 2.5) {
+  if (cds < 2.5) {
     LCD.print("DAY");
   }
   else {
@@ -251,5 +242,4 @@ void loop() {
         break;
     }
   }
-  TIMER.run();
 }

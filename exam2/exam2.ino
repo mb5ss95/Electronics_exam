@@ -1,4 +1,3 @@
-#include <SimpleTimer.h>
 #include <LiquidCrystal_I2C.h>
 
 #define SW1_PIN 3
@@ -28,23 +27,20 @@ typedef enum {
 
 // 전역 변수
 LiquidCrystal_I2C LCD(0x27, 16, 2);
-SimpleTimer TIMER;
 
 _LcdState LcdState, PreLcdState;
-int TimerId, cnt;
 
-void timer_Start() {
-  if (cnt++ == 3) LcdState == LcdStateInit;
-}
 
 void press_SW1() {
-  cnt = 0;
+  int cnt = 0;
 
-  TIMER.enable(TimerId);
   while (digitalRead(SW1_PIN) == LOW) {
-    if (LcdState == LcdStateInit) break;
+    delayMicroseconds(15000);
+    if (++cnt >= 200) {
+      LcdState = LcdStateInit;
+      break;
+    }
   }
-  TIMER.disable(TimerId);
 
   switch (LcdState) {
     case LcdStateInit:
@@ -105,9 +101,6 @@ void setup() {
 
   // LcdState 초기설정
   LcdState = LcdStateInit;
-
-  // 타이머 초기설정
-  TimerId = TIMER.setInterval(1000, timer_Start); // 1초에 한번씩 timer_Start 함수 실행
 }
 
 void lcd_Print(char *s1, char *s2) {
@@ -136,10 +129,23 @@ void sensing_Pulse() {
   int hour = 11;
   int minute = 59;
   int sec = 50;
-  int msec = 0;
+  int msec = 56;
+
+
+  LCD.setCursor(1, 1);
+  LCD.print("AM");
+  LCD.setCursor(4, 1);
+  LCD.print(hour);
+  LCD.setCursor(7, 1);
+  LCD.print(minute);
+  LCD.setCursor(10, 1);
+  LCD.print(sec);
+  LCD.setCursor(13, 1);
+  LCD.print(msec);
 
   while (LcdState == LcdStateMode1) {
     msec = msec + pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW);
+    Serial.println(msec);
     if (msec >= 100) {
       msec = 0;
       sec++;
@@ -165,8 +171,8 @@ void sensing_Pulse() {
       }
       LCD.setCursor(10, 1);
       LCD.print(sec);
-      LCD.setCursor(13, 1);
     }
+    LCD.setCursor(13, 1);
     LCD.print(msec);
   }
 }
@@ -186,7 +192,7 @@ void sensing_Temp() {
   }
 }
 
-void sensing_Cds(float & PreCds) {
+void sensing_Cds() {
   float PreCds, cds;
 
   while (LcdState == LcdStateMode2_Cds) {
@@ -195,6 +201,7 @@ void sensing_Cds(float & PreCds) {
 
     if (cds == PreCds) continue;
 
+    Serial.println(cds);
     LCD.setCursor(7, 1);
     if (cds >= 2.5) {
       LCD.print(" On");
@@ -207,10 +214,10 @@ void sensing_Cds(float & PreCds) {
   }
 }
 
-void sensing_Ultra(int &PreDistance) {
+void sensing_Ultra() {
   int PreDistance, distance;
 
-  while (distance == PreDistance) {
+  while (LcdState == LcdStateMode2_Ultra) {
     digitalWrite(TRIG_PIN, HIGH);
     delayMicroseconds(10);
     digitalWrite(TRIG_PIN, LOW);
@@ -252,6 +259,7 @@ void loop() {
         break;
       case LcdStateMode1:
         lcd_Print("[ DigitalClock ]", "[AM]xx:xx:xx:xx");
+        sensing_Pulse();
         break;
       case LcdStateMode2_Cds:
         lcd_Print("2.Sensor Mode", " [CDS] xxx");
@@ -269,5 +277,4 @@ void loop() {
         break;
     }
   }
-  TIMER.run();
 }
