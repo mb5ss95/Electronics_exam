@@ -115,18 +115,18 @@ void lcd_Blink(int num) {
 
 // Mode 1. Pulse Mode 동작
 void sensing_Pulse() {
-  int PreFrequency;
+  float PreFrequency;
 
   while (LcdState == LcdStateMode1) {
-    int duration = pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW);
-    int frequency = 1 / duration;
+    int duration = (pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW)); // micro단위임
+    int frequency = 1000000 / duration;
     // 주파수 = 1 / 진동주기
 
     if (PreFrequency == frequency) continue;
 
     LCD.setCursor(6, 1);
     LCD.print(frequency);
-    LCD.print("Hz");
+    LCD.print("Hz    ");
 
     PreFrequency = frequency;
   }
@@ -213,7 +213,6 @@ void setup() {
   // LCD 초기설정
   LCD.begin();
   LCD.backlight();
-  LCD.createChar(0, zero);
   LCD.createChar(1, one);
   LCD.createChar(2, two);
   LCD.createChar(3, three);
@@ -242,7 +241,7 @@ void loop() {
         lcd_Print("2.Sensor Mode", " Push Select!");
         break;
       case LcdStateMode1:
-        lcd_Print("[Pulse Mode]", "Freq: ");
+        lcd_Print("[Pulse Mode]", "Freq:       ");
         sensing_Pulse();
         break;
       case LcdStateMode2:
