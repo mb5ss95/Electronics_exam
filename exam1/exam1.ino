@@ -115,11 +115,11 @@ void lcd_Blink(int num) {
 
 // Mode 1. Pulse Mode 동작
 void sensing_Pulse() {
-  float PreFrequency;
+  int PreFrequency;
 
   while (LcdState == LcdStateMode1) {
-    int duration = (pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW)); // micro단위임
-    int frequency = 1000000 / duration;
+    int duration = pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW); // micro단위임
+    int frequency = round(1000000 / duration);
     // 주파수 = 1 / 진동주기
 
     if (PreFrequency == frequency) continue;
@@ -199,6 +199,7 @@ void setup() {
   pinMode(SW1_PIN, INPUT_PULLUP);
   pinMode(SW2_PIN, INPUT_PULLUP);
   pinMode(SW3_PIN, INPUT_PULLUP);
+  pinMode(PULSE_PIN, INPUT);
   pinMode(ECHO_PIN, INPUT);
   pinMode(TRIG_PIN, OUTPUT);
 
