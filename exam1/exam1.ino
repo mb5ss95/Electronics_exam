@@ -1,26 +1,34 @@
 #include <LiquidCrystal_I2C.h>
 
+// 스위치 핀
 #define SW1_PIN 3
 #define SW2_PIN 18
 #define SW3_PIN 19
 
+// 펄스 발생기 핀
 #define PULSE_PIN 7
+
+// 초음파 센서 핀
 #define TRIG_PIN 8
 #define ECHO_PIN 9
 
+// 온도 센서 핀, 조도센서 핀
 #define TEMP_PIN A0
 #define CDS_PIN A1
 
+// 딜레이
 #define TIME_DELAY 250
 
 
-uint8_t zero[8]  = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+// 초음파 센서가 측정한 거리에 따라 세로로 한 칸당 1cm를 표현함.
 uint8_t one[8]  = {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10};
 uint8_t two[8]  = {0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18};
 uint8_t three[8] = {0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c};
 uint8_t four[8] = {0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e};
 uint8_t five[8]  = {0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
 
+
+// 상태 변수를 만들어서 LCD화면의 상태에 따라 화면창이 바뀌고, 동작이 바뀜.
 typedef enum {
   LcdStateInit = -2,   // Digital Pulse \n Number: A001
   LcdStateStart,       // Mode Button \n Push Mode SW1_PIN!
@@ -30,23 +38,27 @@ typedef enum {
   LcdStateMode2        // T:xx.xxC CDS:DAY \n U:■■■■
 } _LcdState;
 
+
 // 전역 변수
-LiquidCrystal_I2C LCD(0x27, 16, 2);
+LiquidCrystal_I2C LCD(0x27, 16, 2);   // LCD 객체
+_LcdState LcdState, PreLcdState;      // 상태 변수
 
-_LcdState LcdState, PreLcdState;
 
 
+// SW1을 눌렀을 때 수행하는 함수
 void press_SW1() {
   int cnt = 0;
 
+  // 버튼을 길게 누를때 0.15초 간격으로 200번 카운터하면 3초가 됨.
   while (digitalRead(SW1_PIN) == LOW) {
-    delayMicroseconds(15000);
+    delayMicroseconds(15000); // 이 함수는 16,384값을 초과하면 아니됨.
     if (++cnt >= 200) {
       LcdState = LcdStateInit;
       break;
     }
   }
 
+  // 버튼을 떼었을 때 상태 전환
   switch (LcdState) {
     case LcdStateInit:
       break;
@@ -59,6 +71,7 @@ void press_SW1() {
   }
 }
 
+// SW2를 눌렀을 때 수행하는 함수
 void press_SW2() {
   switch (LcdState) {
     case LcdStateHome1:
@@ -70,8 +83,115 @@ void press_SW2() {
   }
 }
 
+// SW3을 눌렀을 때 수행하는 함수
 void press_SW3() {
   LcdState = LcdStateHome1;
+}
+
+
+// LCD 첫번째 줄에 s1을, 두번째 줄에 s2를 표시함
+void lcd_Print(char *s1, char *s2) {
+  LCD.clear();
+  LCD.home();
+  LCD.print(s1);
+  LCD.setCursor(0, 1);
+  LCD.print(s2);
+}
+
+// LCD를 num번 수행함
+void lcd_Blink(int num) {
+  // SW3을 누르면 어떠한 경우에서도 동작구성 2)-가)로 가야됨.
+  while (LcdState == LcdStateInit) {
+    delay(TIME_DELAY);
+    LCD.noDisplay();
+    delay(TIME_DELAY);
+    LCD.display();
+    if (--num == 0) {
+      LcdState = LcdStateStart;
+      break;
+    }
+  }
+}
+
+// Mode 1. Pulse Mode 동작
+void sensing_Pulse() {
+  int PreFrequency;
+
+  while (LcdState == LcdStateMode1) {
+    int duration = pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW);
+    int frequency = 1 / duration;
+    // 주파수 = 1 / 진동주기
+
+    if (PreFrequency == frequency) continue;
+
+    LCD.setCursor(6, 1);
+    LCD.print(frequency);
+    LCD.print("Hz");
+
+    PreFrequency = frequency;
+  }
+}
+
+// Mode 2. Sensor Mode 동작
+void sensing_Temp_Cds_Ultra() {
+
+  while (LcdState == LcdStateMode2 ) {
+    sensing_Temp();
+    sensing_Cds();
+    sensing_Ultra();
+  }
+}
+
+// Mode 2. LM35 Sensor Mode 동작
+void sensing_Temp() {
+  // LM35 온도 공식 (100 * 5 / 1024)
+  float temp = analogRead(TEMP_PIN) * 0.48828125;
+
+  LCD.setCursor(2, 0);
+  LCD.print(temp);
+}
+
+// Mode 2. CDS Sensor Mode 동작
+void sensing_Cds() {
+  // 센서 전압 : 기준 전압(=5v) = 디지털 값(=analogRead(pin_number)) : 분해능(=1024)
+  float cds = analogRead(CDS_PIN) * 0.0048828125;
+
+  LCD.setCursor(13, 0);
+  if (cds < 2.5) {
+    LCD.print("DAY");
+  }
+  else {
+    LCD.print("NIG");
+  }
+}
+
+// Mode 2. 초음파 Sensor Mode 동작
+void sensing_Ultra() {
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  // 거리 = 속력 * 시간
+  int distance = pulseIn(ECHO_PIN, HIGH) / 58;
+
+  int tens = distance / 5;  // 몫
+  int units = distance % 5; // 나머지
+
+  //LCD가 16칸이므로 초과시 return
+  if (tens > 14) return;
+
+  //(2 + tens, 1)부터 초기화
+  LCD.setCursor(2 + tens, 1);
+  for (int i = tens; i < 14; i++) {
+    LCD.print(" ");
+  }
+
+  //(2, 1)부터 거리 갱신
+  LCD.setCursor(2, 1);
+  for (int i = 0; i < tens; i++) {
+    LCD.write(5);
+  }
+  LCD.write(units);
 }
 
 void setup() {
@@ -103,115 +223,6 @@ void setup() {
   // LcdState 초기설정
   LcdState = LcdStateInit;
 }
-
-void lcd_Print(char *s1, char *s2) {
-  LCD.clear();
-  LCD.home();
-  LCD.print(s1);
-  LCD.setCursor(0, 1);
-  LCD.print(s2);
-}
-
-void lcd_Blink(int num) {
-  while (LcdState == LcdStateInit) {
-    delay(TIME_DELAY);
-    LCD.noDisplay();
-    delay(TIME_DELAY);
-    LCD.display();
-    if (--num == 0) {
-      LcdState = LcdStateStart;
-      break;
-    }
-  }
-}
-
-void sensing_Pulse() {
-  int PreFrequency;
-
-  while (LcdState == LcdStateMode1) {
-    int duration = pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW);
-    int frequency = 1 / duration;
-    // 주파수 = 1 / 진동주기
-
-    if (PreFrequency == frequency) continue;
-
-    LCD.setCursor(6, 1);
-    LCD.print(frequency);
-    LCD.print("Hz");
-
-    PreFrequency = frequency;
-  }
-}
-
-void sensing_Temp_Cds_Ultra() {
-  float PreTemp, PreCds;
-  int PreDistance;
-
-  while (LcdState == LcdStateMode2 ) {
-    sensing_Temp(PreTemp);
-    sensing_Cds(PreCds);
-    sensing_Ultra(PreDistance);
-  }
-}
-
-void sensing_Temp(float &PreTemp) {
-  float temp = analogRead(TEMP_PIN) * 0.48828125;
-  // LM35 온도 공식 (100 * 5 / 1024)
-
-  if (PreTemp == temp) return;
-
-  LCD.setCursor(2, 0);
-  LCD.print(temp);
-  PreTemp = temp;
-}
-
-void sensing_Cds(float &PreCds) {
-  float cds = analogRead(CDS_PIN) * 0.0048828125;
-  // 센서 전압 : 기준 전압(=5v) = 디지털 값(=analogRead(pin_number)) : 분해능(=1024)
-
-  if (cds == PreCds) return;
-
-  LCD.setCursor(13, 0);
-  if (cds < 2.5) {
-    LCD.print("DAY");
-  }
-  else {
-    LCD.print("NIG");
-  }
-
-  PreCds = cds;
-}
-
-void sensing_Ultra(int &PreDistance) {
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-
-  int distance = pulseIn(ECHO_PIN, HIGH) / 58;
-  // 거리 = 속력 * 시간
-
-  int tens = distance / 5;  // 몫
-  int units = distance % 5; // 나머지
-
-  if (tens > 14 || PreDistance == distance) return;
-  //LCD가 16칸이므로 초과시 return
-
-  LCD.setCursor(2 + tens, 1);
-  for (int i = tens; i < 14; i++) {
-    LCD.write(0);
-  }
-  //(2,1)부터 초기화
-
-  LCD.setCursor(2, 1);
-  for (int i = 0; i < tens; i++) {
-    LCD.write(5);
-  }
-  LCD.write(units);
-  //(2,1)부터 거리 갱신
-
-  PreDistance = distance;
-}
-
 
 void loop() {
   if (LcdState != PreLcdState) {
