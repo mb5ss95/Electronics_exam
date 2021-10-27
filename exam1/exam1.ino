@@ -1,3 +1,4 @@
+#include <SimpleTimer.h>
 #include <LiquidCrystal_I2C.h>
 
 // 스위치 핀
@@ -41,6 +42,7 @@ typedef enum {
 
 // 전역 변수
 LiquidCrystal_I2C LCD(0x27, 16, 2);   // LCD 객체
+SimpleTimer TIMER;                    // Timer 객체
 _LcdState LcdState, PreLcdState;      // 상태 변수
 
 
@@ -81,11 +83,17 @@ void press_SW2() {
       LcdState = LcdStateMode2;
       break;
   }
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
 }
 
 // SW3을 눌렀을 때 수행하는 함수
 void press_SW3() {
   LcdState = LcdStateHome1;
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
 }
 
 
@@ -113,32 +121,14 @@ void lcd_Blink(int num) {
   }
 }
 
-// Mode 1. Pulse Mode 동작
-void sensing_Pulse() {
-  int PreFrequency;
-
-  while (LcdState == LcdStateMode1) {
-    int duration = pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW); // micro단위임
-    int frequency = round(1000000 / duration);
-    // 주파수 = 1 / 진동주기
-
-    if (PreFrequency == frequency) continue;
-
-    LCD.setCursor(6, 1);
-    LCD.print(frequency);
-    LCD.print("Hz    ");
-
-    PreFrequency = frequency;
-  }
-}
-
 // Mode 2. Sensor Mode 동작
 void sensing_Temp_Cds_Ultra() {
-
+  // 온도, 조도, 초음파 센서 타이머 설정
+  TIMER.setInterval(100, sensing_Temp);
+  TIMER.setInterval(300, sensing_Cds);
+  TIMER.setInterval(500, sensing_Ultra);
   while (LcdState == LcdStateMode2 ) {
-    sensing_Temp();
-    sensing_Cds();
-    sensing_Ultra();
+    TIMER.run();
   }
 }
 
@@ -149,6 +139,7 @@ void sensing_Temp() {
 
   LCD.setCursor(2, 0);
   LCD.print(temp);
+  LCD.print("C");
 }
 
 // Mode 2. CDS Sensor Mode 동작
@@ -194,6 +185,25 @@ void sensing_Ultra() {
   LCD.write(units);
 }
 
+// Mode 1. Pulse Mode 동작
+void sensing_Pulse() {
+  int PreFrequency;
+
+  while (LcdState == LcdStateMode1) {
+    int duration = pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW); // micro단위임
+    int frequency = round(1000000 / duration);
+    // 주파수 = 1 / 진동주기
+
+    if (PreFrequency == frequency) continue;
+
+    LCD.setCursor(6, 1);
+    LCD.print(frequency);
+    LCD.print("Hz    ");
+
+    PreFrequency = frequency;
+  }
+}
+
 void setup() {
   // 핀 설정
   pinMode(SW1_PIN, INPUT_PULLUP);
@@ -225,6 +235,7 @@ void setup() {
 }
 
 void loop() {
+  // LcdState이 이전 상태와 같으면 실행안됨. 이게 없으면 LCD가 계속 꺼졌다 켜졌다를 반복함.
   if (LcdState != PreLcdState) {
     PreLcdState = LcdState;
     switch (LcdState) {
