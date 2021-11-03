@@ -115,7 +115,15 @@ void press_SW3() {
 void lcd_Print() {
   LCD.clear();
   LCD.home();
-  LCD.print("[AM]");
+  if (Data.Hour < 10) {
+    LCD.print("[AM]0");
+  }
+  else if (Data.Hour < 12) {
+    LCD.print("[AM]");
+  }
+  else {
+    LCD.print("[PM]");
+  }
   LCD.print(Data.Hour);
   LCD.print(":");
   LCD.print(Data.Minute1);
@@ -315,6 +323,7 @@ void loop() {
         break;
       case LcdStateMode1:
         lcd_Print("[ DigitalClock ]", "[AM]11:59:50:56");
+        Data = { 0.0, 0, 11, 5, 9, 5, 0, 5, 6};
         sensing_Pulse(1);
         break;
       case LcdStateMode2:
