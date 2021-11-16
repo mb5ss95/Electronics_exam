@@ -204,7 +204,7 @@ void sensing_Pulse() {
 
   // 100Hz의 펄스를 입력받아서 시계의 10 msec 단위의 기준으로 설정
   // 타이머 설정, (int)round(duration) 시간마다 count_Start 함수 실행
-  TIMER.setInterval((int)round(duration), count_Start);
+  int counter = TIMER.setInterval((int)round(duration), count_Start);
 
 
   while (LcdState == LcdStateMode1) {
@@ -261,6 +261,7 @@ void sensing_Pulse() {
     LCD.setCursor(14, 1);
     LCD.print(msec2);
   }
+  TIMER.deleteTimer(counter);
 }
 
 void setup() {

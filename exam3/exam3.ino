@@ -35,6 +35,8 @@ struct _Data {
   int mSec2;
 } Data;
 
+
+
 // 상태 변수를 만들어서 LCD화면의 상태에 따라 화면창이 바뀌고, 동작이 바뀜.
 typedef enum {
   LcdStateInit = -2,        // Digital Pulse \n Number: A001
@@ -50,10 +52,12 @@ LiquidCrystal_I2C LCD(0x27, 16, 2);   // LCD 객체
 SimpleTimer TIMER;                    // Timer 객체
 _LcdState LcdState, PreLcdState;      // 상태 변수
 
-
 // SW1을 눌렀을 때 수행하는 함수
 void press_SW1() {
   int cnt = 0;
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
 
   // 버튼을 길게 누를때 0.15초 간격으로 200번 카운터하면 3초가 됨.
   while (digitalRead(SW1_PIN) == LOW) {
@@ -75,13 +79,14 @@ void press_SW1() {
       LcdState = LcdStateHome1;
       break;
   }
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
 }
 
 // SW2를 눌렀을 때 수행하는 함수
 void press_SW2() {
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+
   switch (LcdState) {
     case LcdStateHome1:
       LcdState = LcdStateMode1;
@@ -90,13 +95,14 @@ void press_SW2() {
       LcdState = LcdStateMode2;
       break;
   }
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
 }
 
 // SW3을 눌렀을 때 수행하는 함수
 void press_SW3() {
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+
   switch (LcdState) {
     case LcdStateStart:
       EEPROM.get(100, Data);
@@ -106,9 +112,6 @@ void press_SW3() {
       EEPROM.put(100, Data);
       break;
   }
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
 }
 
 // EEPROM에서 가져온 값을 LCD에 표시
@@ -213,18 +216,19 @@ void sensing_Pulse(int index) {
 
   // 100Hz의 펄스를 입력받아서 시계의 10 msec 단위의 기준으로 설정
   // 타이머 설정, (int)round(duration) 시간마다 count_Start 함수 실행
-  TIMER.setInterval((int)round(duration), count_Start);
+  int a, b, c, d;
+  a = TIMER.setInterval((int)round(duration), count_Start);
+
 
   // LcdState = LcdStateMode2일때만
   // 온도, 조도, 초음파 센서 타이머 설정
   if (LcdState == LcdStateMode2) {
-    TIMER.setInterval(300, sensing_Temp);
-    TIMER.setInterval(300, sensing_Cds);
-    TIMER.setInterval(300, sensing_Ultra);
+    b = TIMER.setInterval(333, sensing_Temp);
+    c = TIMER.setInterval(377, sensing_Cds);
+    d = TIMER.setInterval(399, sensing_Ultra);
   }
 
   while (LcdState == LcdStateMode1 || LcdState == LcdStateMode2) {
-    TIMER.run();
     if (Data.mSec2 >= 10) {
       Data.mSec2 = 0;
       Data.mSec1++;
@@ -276,7 +280,12 @@ void sensing_Pulse(int index) {
     }
     LCD.setCursor(14, index);
     LCD.print(Data.mSec2);
+    TIMER.run();
   }
+  TIMER.deleteTimer(a);
+  TIMER.deleteTimer(b);
+  TIMER.deleteTimer(c);
+  TIMER.deleteTimer(d);
 }
 
 void setup() {
