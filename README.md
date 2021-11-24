@@ -33,7 +33,7 @@
 
 ### 만든이 : 동서울대학교 전자공학과 MBS&YHA
 - 완벽한 코드는 아니지만 완벽하게 동작합니다.
-- 아두이노 스위치 Pin을 변경할 시 아두이노 메가 인터럽트가 가능한 Pin으로 설정하십시오.
+- 아두이노 스위치 Pin을 변경할 시 인터럽트가 가능한 Pin으로 설정하십시오.
 - ORCAD Lite 버전은 [https://drive.google.com/file/d/16XdJK0gyOi9nfx-gus6dM4nz-UIs_kke/view?usp=sharing] 에서 다운 가능합니다.
 - ORCAD Lite 버전 라이브러리에는 Connector가 없으니 [Connector.OLB]를 검색해 다운 받아 사용하십시오.
 - ORCAD 사용법은 유튜브에서 숙달 하십시오.
