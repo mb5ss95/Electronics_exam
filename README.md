@@ -23,5 +23,3 @@
 - 아두이노 메가 보드, 점퍼선, 브래드 보드(2000홀 이상) 필수 지참.
 - 아두이노 회로도는 [Arduino_Schematic.png]을 참고.
 
-
-made by MBS, YHA
