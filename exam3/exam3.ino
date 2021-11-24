@@ -22,7 +22,7 @@
 // 딜레이
 #define TIME_DELAY 250
 
-
+// EEPROM에 저장할 DATA Structure
 struct _Data {
   float Temp;
   int Cds;
@@ -34,8 +34,6 @@ struct _Data {
   int mSec1;
   int mSec2;
 } Data;
-
-
 
 // 상태 변수를 만들어서 LCD화면의 상태에 따라 화면창이 바뀌고, 동작이 바뀜.
 typedef enum {
@@ -55,6 +53,8 @@ _LcdState LcdState, PreLcdState;      // 상태 변수
 // SW1을 눌렀을 때 수행하는 함수
 void press_SW1() {
   int cnt = 0;
+
+  // 채터링 방지
   delayMicroseconds(15000);
   delayMicroseconds(15000);
   delayMicroseconds(15000);
@@ -62,7 +62,7 @@ void press_SW1() {
   // 버튼을 길게 누를때 0.15초 간격으로 200번 카운터하면 3초가 됨.
   while (digitalRead(SW1_PIN) == LOW) {
     delayMicroseconds(15000); // 이 함수는 16,384값을 초과하면 아니됨.
-    if (++cnt >= 200) {
+    if (++cnt >= 197) {
       LcdState = LcdStateInit;
       break;
     }
@@ -83,6 +83,7 @@ void press_SW1() {
 
 // SW2를 눌렀을 때 수행하는 함수
 void press_SW2() {
+  // 채터링 방지
   delayMicroseconds(15000);
   delayMicroseconds(15000);
   delayMicroseconds(15000);
@@ -99,16 +100,21 @@ void press_SW2() {
 
 // SW3을 눌렀을 때 수행하는 함수
 void press_SW3() {
+  // 채터링 방지
   delayMicroseconds(15000);
   delayMicroseconds(15000);
   delayMicroseconds(15000);
 
   switch (LcdState) {
     case LcdStateStart:
+      // EEPROM에서 DATA Struct 가져오기
       EEPROM.get(100, Data);
+
+      // loop문에서 switch default로 빠짐
       LcdState = 10;
       break;
     case LcdStateMode2:
+      // EEPROM에 DATA Struct 저장하기
       EEPROM.put(100, Data);
       break;
   }
@@ -118,6 +124,8 @@ void press_SW3() {
 void lcd_Print() {
   LCD.clear();
   LCD.home();
+
+  // hour변수가 한자리일 때, LCD가 밀리는 것을 방지함
   if (Data.Hour < 10) {
     LCD.print("[AM]0");
   }
@@ -202,6 +210,7 @@ void sensing_Ultra() {
   if (distance < 15) LcdState = LcdStateHome1;
 }
 
+// 10msec 단위 기준으로 Data.mSec2 증가
 void count_Start() {
   Data.mSec2++;
 }
@@ -209,16 +218,16 @@ void count_Start() {
 // Mode 1. Clock Mode 동작, Mode 2. CDS, Temp Sensor Mode 동작
 // index로 시계의 출력 위치를 조정
 void sensing_Pulse(int index) {
+  // 타이머 아이디
+  int a, b, c, d;
 
   // 주기 = 1 / 주파수
   // pulseIn함수의 반환값이 micro단위임. 1000을 나누어 milli단위로 변환
   float duration = (pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW)) / 1000.0;
 
-  // 100Hz의 펄스를 입력받아서 시계의 10 msec 단위의 기준으로 설정
+  // 100Hz의 펄스를 입력받아서 시계의 10msec 단위의 기준으로 설정
   // 타이머 설정, (int)round(duration) 시간마다 count_Start 함수 실행
-  int a, b, c, d;
   a = TIMER.setInterval((int)round(duration), count_Start);
-
 
   // LcdState = LcdStateMode2일때만
   // 온도, 조도, 초음파 센서 타이머 설정
@@ -282,6 +291,8 @@ void sensing_Pulse(int index) {
     LCD.print(Data.mSec2);
     TIMER.run();
   }
+
+  // 타이머 종료
   TIMER.deleteTimer(a);
   TIMER.deleteTimer(b);
   TIMER.deleteTimer(c);
@@ -290,9 +301,9 @@ void sensing_Pulse(int index) {
 
 void setup() {
   // 핀 설정
-  pinMode(SW1_PIN, INPUT_PULLUP);
-  pinMode(SW2_PIN, INPUT_PULLUP);
-  pinMode(SW3_PIN, INPUT_PULLUP);
+  pinMode(SW1_PIN, INPUT);
+  pinMode(SW2_PIN, INPUT);
+  pinMode(SW3_PIN, INPUT);
   pinMode(ECHO_PIN, INPUT);
   pinMode(TRIG_PIN, OUTPUT);
 

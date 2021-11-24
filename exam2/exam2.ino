@@ -21,7 +21,6 @@
 // 딜레이
 #define TIME_DELAY 250
 
-
 // 상태 변수를 만들어서 LCD화면의 상태에 따라 화면창이 바뀌고, 동작이 바뀜.
 typedef enum {
   LcdStateInit = -2,        // Digital Pulse \n Number: A001
@@ -38,18 +37,22 @@ typedef enum {
 LiquidCrystal_I2C LCD(0x27, 16, 2);   // LCD 객체
 SimpleTimer TIMER;                    // Timer 객체
 _LcdState LcdState, PreLcdState;      // 상태 변수
-int msec2;                            // 0.01초
-
+int mSec2;                            // 0.01초
 
 
 // SW1을 눌렀을 때 수행하는 함수
 void press_SW1() {
   int cnt = 0;
+  
+  // 채터링 방지
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
 
   // 버튼을 길게 누를때 0.15초 간격으로 200번 카운터하면 3초가 됨.
   while (digitalRead(SW1_PIN) == LOW) {
     delayMicroseconds(15000); // 이 함수는 16,384값을 초과하면 아니됨.
-    if (++cnt >= 200) {
+    if (++cnt >= 197) {
       LcdState = LcdStateInit;
       break;
     }
@@ -70,6 +73,11 @@ void press_SW1() {
 
 // SW2를 눌렀을 때 수행하는 함수
 void press_SW2() {
+  // 채터링 방지
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+
   switch (LcdState) {
     case LcdStateHome1:
       LcdState = LcdStateMode1;
@@ -78,13 +86,15 @@ void press_SW2() {
       LcdState = LcdStateMode2_Cds;
       break;
   }
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
 }
 
 // SW3을 눌렀을 때 수행하는 함수
 void press_SW3() {
+  // 채터링 방지
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+
   switch (LcdState) {
     case LcdStateMode2_Cds:
       LcdState = LcdStateMode2_Ultra;
@@ -96,9 +106,6 @@ void press_SW3() {
       LcdState = LcdStateMode2_Cds;
       break;
   }
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
 }
 
 // LCD 첫번째 줄에 s1을, 두번째 줄에 s2를 표시함
@@ -183,20 +190,21 @@ void sensing_Ultra() {
   }
 }
 
+// 10msec 단위 기준으로 mSec2 증가
 void count_Start() {
-  msec2++;
+  mSec2++;
 }
 
 // Mode 1. Clock Mode 동작
 void sensing_Pulse() {
   // 11시 59분 50.56초
-  int h = 11;
-  int m1 = 5;
-  int m2 = 9;
-  int s1 = 5;
-  int s2 = 0;
-  int msec1 = 5;
-  msec2 = 6;
+  int Hour = 11;
+  int Minute1 = 5;
+  int Minute2 = 9;
+  int Sec1 = 5;
+  int Sec2 = 0;
+  int mSec1 = 5;
+  mSec2 = 6;
 
   // 주기 = 1 / 주파수
   // pulseIn함수의 반환값이 micro단위임. 1000을 나누어 milli단위로 변환
@@ -206,34 +214,32 @@ void sensing_Pulse() {
   // 타이머 설정, (int)round(duration) 시간마다 count_Start 함수 실행
   int counter = TIMER.setInterval((int)round(duration), count_Start);
 
-
   while (LcdState == LcdStateMode1) {
-    TIMER.run();
-    if (msec2 >= 10) {
-      msec2 = 0;
-      msec1++;
-      if (msec1 >= 10) {
-        msec1 = 0;
-        s2++;
-        if (s2 >= 10) {
-          s2 = 0;
-          s1++;
-          if (s1 >= 6) {
-            s1 = 0;
-            m2++;
-            if (m2 >= 10) {
-              m2 = 0;
-              m1++;
-              if (m1 >= 6) {
-                m1 = 0;
-                h++;
+    if (mSec2 >= 10) {
+      mSec2 = 0;
+      mSec1++;
+      if (mSec1 >= 10) {
+        mSec1 = 0;
+        Sec2++;
+        if (Sec2 >= 10) {
+          Sec2 = 0;
+          Sec1++;
+          if (Sec1 >= 6) {
+            Sec1 = 0;
+            Minute2++;
+            if (Minute2 >= 10) {
+              Minute2 = 0;
+              Minute1++;
+              if (Minute1 >= 6) {
+                Minute1 = 0;
+                Hour++;
                 LCD.setCursor(1, 1);
-                h %= 24;
-                if (h < 10) {
+                DHour %= 24;
+                if (Data.Hour < 10) {
                   LCD.print("AM]0");
                   LCD.setCursor(5, 1);
                 }
-                else if (h < 12) {
+                else if (Data.Hour < 12) {
                   LCD.print("AM");
                   LCD.setCursor(4, 1);
                 }
@@ -241,34 +247,35 @@ void sensing_Pulse() {
                   LCD.print("PM");
                   LCD.setCursor(4, 1);
                 }
-                LCD.print(h);
+                LCD.print(Data.Hour);
               }
               LCD.setCursor(7, 1);
-              LCD.print(m1);
+              LCD.print(Data.Minute1);
             }
             LCD.setCursor(8, 1);
-            LCD.print(m2);
+            LCD.print(Data.Minute2);
           }
           LCD.setCursor(10, 1);
-          LCD.print(s1);
+          LCD.print(Data.Sec1);
         }
         LCD.setCursor(11, 1);
-        LCD.print(s2);
+        LCD.print(Data.Sec2);
       }
       LCD.setCursor(13, 1);
-      LCD.print(msec1);
+      LCD.print(Data.mSec1);
     }
     LCD.setCursor(14, 1);
-    LCD.print(msec2);
+    LCD.print(Data.mSec2);
+    TIMER.run();
   }
   TIMER.deleteTimer(counter);
 }
 
 void setup() {
   // 핀 설정
-  pinMode(SW1_PIN, INPUT_PULLUP);
-  pinMode(SW2_PIN, INPUT_PULLUP);
-  pinMode(SW3_PIN, INPUT_PULLUP);
+  pinMode(SW1_PIN, INPUT);
+  pinMode(SW2_PIN, INPUT);
+  pinMode(SW3_PIN, INPUT);
   pinMode(ECHO_PIN, INPUT);
   pinMode(TRIG_PIN, OUTPUT);
 

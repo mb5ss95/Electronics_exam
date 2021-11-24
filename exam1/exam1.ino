@@ -20,15 +20,6 @@
 // 딜레이
 #define TIME_DELAY 250
 
-
-// 초음파 센서가 측정한 거리에 따라 세로로 한 칸당 1cm를 표현함.
-uint8_t one[8]  = {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10};
-uint8_t two[8]  = {0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18};
-uint8_t three[8] = {0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c};
-uint8_t four[8] = {0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e};
-uint8_t five[8]  = {0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
-
-
 // 상태 변수를 만들어서 LCD화면의 상태에 따라 화면창이 바뀌고, 동작이 바뀜.
 typedef enum {
   LcdStateInit = -2,   // Digital Pulse \n Number: A001
@@ -38,7 +29,6 @@ typedef enum {
   LcdStateMode1,       // [Pulse Mode] \n Freq: xxxHz
   LcdStateMode2        // T:xx.xxC CDS:DAY \n U:■■■■
 } _LcdState;
-
 
 // 전역 변수
 LiquidCrystal_I2C LCD(0x27, 16, 2);   // LCD 객체
@@ -51,10 +41,15 @@ _LcdState LcdState, PreLcdState;      // 상태 변수
 void press_SW1() {
   int cnt = 0;
 
+  // 채터링 방지
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+
   // 버튼을 길게 누를때 0.15초 간격으로 200번 카운터하면 3초가 됨.
   while (digitalRead(SW1_PIN) == LOW) {
     delayMicroseconds(15000); // 이 함수는 16,384값을 초과하면 아니됨.
-    if (++cnt >= 200) {
+    if (++cnt >= 197) {
       LcdState = LcdStateInit;
       break;
     }
@@ -75,6 +70,11 @@ void press_SW1() {
 
 // SW2를 눌렀을 때 수행하는 함수
 void press_SW2() {
+  // 채터링 방지
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+
   switch (LcdState) {
     case LcdStateHome1:
       LcdState = LcdStateMode1;
@@ -83,17 +83,16 @@ void press_SW2() {
       LcdState = LcdStateMode2;
       break;
   }
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
 }
 
 // SW3을 눌렀을 때 수행하는 함수
 void press_SW3() {
+  // 채터링 방지
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+  delayMicroseconds(15000);
+
   LcdState = LcdStateHome1;
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
-  delayMicroseconds(15000);
 }
 
 
@@ -123,13 +122,22 @@ void lcd_Blink(int num) {
 
 // Mode 2. Sensor Mode 동작
 void sensing_Temp_Cds_Ultra() {
+  // 타이머 아이디
+  int a, b, c;
+
   // 온도, 조도, 초음파 센서 타이머 설정
-  TIMER.setInterval(100, sensing_Temp);
-  TIMER.setInterval(300, sensing_Cds);
-  TIMER.setInterval(500, sensing_Ultra);
-  while (LcdState == LcdStateMode2 ) {
+  a = TIMER.setInterval(333, sensing_Temp);
+  b = TIMER.setInterval(377, sensing_Cds);
+  c = TIMER.setInterval(399, sensing_Ultra);
+
+  while (LcdState == LcdStateMode2) {
     TIMER.run();
   }
+
+  // 타이머 종료
+  TIMER.deleteTimer(a);
+  TIMER.deleteTimer(b);
+  TIMER.deleteTimer(c);
 }
 
 // Mode 2. LM35 Sensor Mode 동작
@@ -187,13 +195,16 @@ void sensing_Ultra() {
 
 // Mode 1. Pulse Mode 동작
 void sensing_Pulse() {
-  int PreFrequency;
+  int duration, frequency, PreFrequency;
 
   while (LcdState == LcdStateMode1) {
-    int duration = pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW); // micro단위임
-    int frequency = round(1000000 / duration);
-    // 주파수 = 1 / 진동주기
+    // pulseIn함수의 반환값이 micro단위임.
+    duration = pulseIn(PULSE_PIN, HIGH) + pulseIn(PULSE_PIN, LOW);
 
+    // 주파수 = 1 / 진동주기
+    frequency = round(1000000 / duration);
+
+    // 이전 주파수와 현재 주파수가 같을 시 다시 실행
     if (PreFrequency == frequency) continue;
 
     LCD.setCursor(6, 1);
@@ -205,10 +216,17 @@ void sensing_Pulse() {
 }
 
 void setup() {
+  // 초음파 센서가 측정한 거리에 따라 세로로 한 칸당 1cm를 표현함.
+  uint8_t one[8]  = {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10};
+  uint8_t two[8]  = {0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18};
+  uint8_t three[8] = {0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c};
+  uint8_t four[8] = {0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e, 0x1e};
+  uint8_t five[8]  = {0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
+
   // 핀 설정
-  pinMode(SW1_PIN, INPUT_PULLUP);
-  pinMode(SW2_PIN, INPUT_PULLUP);
-  pinMode(SW3_PIN, INPUT_PULLUP);
+  pinMode(SW1_PIN, INPUT);
+  pinMode(SW2_PIN, INPUT);
+  pinMode(SW3_PIN, INPUT);
   pinMode(PULSE_PIN, INPUT);
   pinMode(ECHO_PIN, INPUT);
   pinMode(TRIG_PIN, OUTPUT);
@@ -224,6 +242,8 @@ void setup() {
   // LCD 초기설정
   LCD.begin();
   LCD.backlight();
+
+  // 초음파 센서 거리에 따른 사용자 정의 문자 지정
   LCD.createChar(1, one);
   LCD.createChar(2, two);
   LCD.createChar(3, three);
