@@ -15,6 +15,9 @@
 - 회로 완성 후 프로젝트 파일(.opj)을 감독관 USB에 옮기고, 다른 pc에서 프린트 함.
 - 빈칸 외에 회로에서 점 하나를 안 찍거나, 다른 부품을 배치하는 등 기존 회로와 틀리면 실격 처리됨.
 - 회로도는 [Schematic.pdf]를 참고.   
+- ORCAD Lite 버전은 [https://drive.google.com/file/d/16XdJK0gyOi9nfx-gus6dM4nz-UIs_kke/view?usp=sharing] 에서 다운 가능합니다.
+- ORCAD Lite 버전 라이브러리에는 Connector가 없으니 [Connector.OLB]를 검색해 다운 받아 사용하십시오.
+- ORCAD 사용법은 유튜브에서 숙달 하십시오.
 
 <br />
 <br />
@@ -26,7 +29,8 @@
 - 아두이노 호환 보드 사용 가능.
 - 아두이노 메가 보드, 점퍼선, 브래드 보드(2000홀 이상) 필수 지참.
 - 아두이노 회로도는 [Arduino_Schematic.png]을 참고.   
-
+- 아두이노 스위치 Pin을 변경할 시 인터럽트가 가능한 Pin으로 설정하십시오.
+- 아두이노 Trig Pin과 Echo Pin은 반드시 PWM이 출력 가능한 Pin으로 설정하십시오.
 
 <br />
 <br />
@@ -34,8 +38,3 @@
 ### 저작자 : 동서울대학교 전자공학과 MBS, YHA
 - 일반적으로 자유롭게 사용, 복제, 배포 수정 할 수 있으나, 반드시 저작자 및 출처를 표시해주십시오.
 - 완벽한 코드는 아니지만 완벽하게 동작합니다.
-- 아두이노 스위치 Pin을 변경할 시 인터럽트가 가능한 Pin으로 설정하십시오.
-- 아두이노 Trig Pin과 Echo Pin은 반드시 PWM이 출력 가능한 Pin으로 설정하십시오.
-- ORCAD Lite 버전은 [https://drive.google.com/file/d/16XdJK0gyOi9nfx-gus6dM4nz-UIs_kke/view?usp=sharing] 에서 다운 가능합니다.
-- ORCAD Lite 버전 라이브러리에는 Connector가 없으니 [Connector.OLB]를 검색해 다운 받아 사용하십시오.
-- ORCAD 사용법은 유튜브에서 숙달 하십시오.
